@@ -1,0 +1,105 @@
+
+Input: URLs (crawler seeds)
+Output: email addresses
+
+continue to all hyperlinks
+- no repetitions
+
+-------------------------------------------------------------------------------
+Libs:
+    async.io
+        Performance – use the maximum amount of internet bandwidth (asyncio should be fine)
+        so we can do other calculations while network IO is running
+    graphs? - nah, lets make our own node
+    pytest
+        Do some testing
+    regex
+        hyperlink and email pattern recognition
+
+-------------------------------------------------------------------------------
+Algorithm flow design:
+
+    Main process:
+        Creates data structures: HQ, RQ, PQ, EQ
+            Adds crawler seeds to HQ
+        Startup the subtasks: Filter, NetworkReader, WebParser, Display
+            Waits for completion (join)
+        * out HQ - Given a set of websites, put in HQ
+
+    Filter:
+        Filter out already processed websites
+        using an internal set<URL:string> state
+        * in HQ - Hyperlink queue <URL:string> / waiting
+        * out RQ - Request queue <URL: string>
+
+    Network Reader:
+        Request website content
+        * in RQ - Request queue <URL: string> / waiting
+        * out PQ - Parse queue <URL:string, Data:string>
+
+    Web Parser:
+        Look for hyperlinks and email addresses in a website content data
+        using Regex / Pattern search
+        * in PQ - Parse queue <URL:string, Data:string> / waiting
+        * out EQ - Email queue <email:string>
+        * out HQ - Hyperlink queue <URL:string>
+
+    Display:
+        Displays list of emails collected
+        (UI related, separated from logic above)
+        * in EQ - Email queue <email:string> / waiting
+
+    End condition: all stages are 'idle' / waiting up to a timeout
+
+-------------------------------------------------------------------------------
+Classes & Data structures:
+
+    Multiprocess Queues:    <from multiprocessing import Process, Queue>
+        HyperlinkQueue: new websites hyperlinks discovered
+        RequestQueue: websites that haven't yet been processed
+        ParseQueue: website content to be parsed
+        EmailQueue: produced emails to report
+
+    ISystem:
+        - input queue
+        - timeout to wait on input queue before exiting
+        - joinable by main
+        Implemented by: Filter, NetworkReader, WebParser, Reporter
+
+    Website URL:string
+    Website Content: (URL:string, Text:string)
+    Email: string
+
+    Filter state: set<URL:string>
+
+    (No graph or child pointers for concurrency and optimization,
+     approaching with data in mind, all pass required information between algorithm stages)
+
+-------------------------------------------------------------------------------
+Classes & Data structures:
+    - Graph:
+    -    State: Pending/In Progress/Completed
+    -    Node - URL/site
+    -    Child nodes - all hyperlinks
+    -    Content - email addresses
+    Website
+        URL: string
+        State: Pending/In Progress/Completed
+        (No graph or child pointers for concurrency and optimization,
+         parsing adds to other DS below directly)
+    Pending Queue: websites that haven't yet been processed
+
+    Concurrent Queue: <from multiprocessing import Process, Queue>
+        Unprocessed nodes (pending)
+    List:
+        Output email addresses
+    HashMap:
+        Node lookup (new[nonexistent]/pending/completed)
+            key: URL
+    MultiProcess Workers:
+        Input - URL to process
+        Output - Hyperlinks & email addresses
+        Multi-threading: Network IO
+        Multi-processing: Website Data Parsing
+        Since every request is followed by parsing, can use the stronger process for both
+
