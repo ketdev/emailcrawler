@@ -1,30 +1,16 @@
 import asyncio
 import aiohttp
+import requests
 import re
+import multiprocessing as mp
+from queue import Empty
 
 # Some type definitions used
 URL = str
-Queue = asyncio.Queue
+Queue = mp.Queue
 
 
-class IService(object):
-    async def run(self):
-        pass
-
-
-class Filter(IService):
-    def __init__(self, timeout: int, hyperlink_queue: Queue, request_queue: Queue):
-        self._timeout: int = timeout
-        self._hyperlink_queue: Queue = hyperlink_queue
-        self._request_queue: Queue = request_queue
-        # internal state of seen hyperlinks
-        self._seen_filter = set()
-
-    async def run(self):
-        pass
-
-
-async def url_filter(timeout: int, in_queue: Queue, out_queue: Queue):
+def url_filter(timeout: int, in_queue: Queue, out_queue: Queue):
     """
     Filter out already processed items
     :param timeout: max time allowed to await new items before exiting
@@ -34,115 +20,79 @@ async def url_filter(timeout: int, in_queue: Queue, out_queue: Queue):
     # internal state of seen hyperlinks
     seen_filter = set()
     # -------------
+    try:
+        while True:
+            item = in_queue.get(timeout=timeout)
+            print("<filter got: ", item, " >")
 
-    while True:
-        # Break loop if empty for timeout
-        if in_queue.qsize() == 0:
-            await asyncio.sleep(timeout)
-            if in_queue.qsize() == 0:
-                break
-
-        item = await in_queue.get()
-        print("<filter got: ", item, " >")
-
-        # -------------
-        if item not in seen_filter:
-            print("<is new>")
-            seen_filter.add(item)
-            await out_queue.put(item)
-        else:
-            print("<old!>")
-        # -------------
-
-    print("<end url_filter>")
+            # -------------
+            if item not in seen_filter:
+                print("<is new>")
+                seen_filter.add(item)
+                out_queue.put(item)
+            else:
+                print("<old!>")
+            # -------------
+    except Empty:
+        print("<end url_filter>")
 
 
-async def network_reader(timeout: int, in_queue: Queue, out_queue: Queue):
+def network_reader(timeout: int, in_queue: Queue, out_queue: Queue):
     """
     Request website content
     :param timeout: max time allowed to await new items before exiting
     :param in_queue:
     :param out_queue:
     """
-    # internal state of request futures pending
-    async with aiohttp.ClientSession() as session:
-
+    try:
         while True:
-            # Break loop if empty for timeout
-            if in_queue.qsize() == 0:
-                await asyncio.sleep(timeout)
-                if in_queue.qsize() == 0:
-                    break
-
-            url = await in_queue.get()
+            url = in_queue.get(timeout=timeout)
             print("<network_reader got: ", url, " >")
 
             # -------------
-            async def _handle_item(session, url, out_queue):
-                async with session.get(url) as resp:
-                    data = await resp.text()
-                    print("<data for: ", url, " >")
-                    await out_queue.put((url, data))
-                pass
-
-            # sending get request and saving the response as response object
-            asyncio.ensure_future(_handle_item(session, url, out_queue))
+            # TODO: multi-thread IOs
+            data = requests.get(url=url)
+            out_queue.put((url, data))
+            print("<data for: ", url, " >")
             # -------------
-
+    except Empty:
         print("<end network_reader>")
 
 
-async def web_parser(timeout: int, in_queue: Queue, email_queue: Queue, hyperlink_queue: Queue):
-    while True:
-        # Break loop if empty for timeout
-        if in_queue.qsize() == 0:
-            await asyncio.sleep(timeout)
-            if in_queue.qsize() == 0:
-                break
+def web_parser(timeout: int, in_queue: Queue, email_queue: Queue, hyperlink_queue: Queue):
+    try:
+        while True:
+            (url, data) = in_queue.get(timeout=timeout)
+            print("<web_parser got: ", url, " >")
 
-        (url, data) = await in_queue.get()
-        print("<web_parser got: ", url, " >")
+            # -------------
+            for link in re.findall('"(https?://.*?)"', data.text):
+                print("<url: ", url, " link: ", link, " >")
+                # hyperlink_queue.put(link)
 
-        # -------------
-        for link in re.findall('"(https?://.*?)"', data):
-            print("<url: ", url, " link: ", link, " >")
-            # await hyperlink_queue.put(link)
-        # -------------
-
-    print("<end web_parser>")
-
-
-class NetworkReader(IService):
-    def __init__(self, timeout: int, request_queue: Queue, parse_queue: Queue):
-        self._timeout: int = timeout
-        self._request_queue: Queue = request_queue
-        self._parse_queue: Queue = parse_queue
-
-    def _handle(self, url):
-        print("NetworkReader got: ", url)
+            for email in re.findall(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)", data.text):
+                print("<email: ", email.strip())
+                email_queue.put(email.strip())
+            # -------------
+    except Empty:
+        print("<end web_parser>")
 
 
-class WebParser(IService):
-    def __init__(self, timeout: int, parse_queue: Queue, email_queue: Queue, hyperlink_queue: Queue):
-        self._timeout: int = timeout
-        self._parse_queue: Queue = parse_queue
-        self._email_queue: Queue = email_queue
-        self._hyperlink_queue: Queue = hyperlink_queue
+def email_display(timeout: int, in_queue: Queue):
+    try:
+        while True:
+            email = in_queue.get(timeout=timeout)
+            print("<email_display got: ", email, " >")
 
-    def _handle(self, url):
-        print("WebParser got: ", url)
+            # -------------
+            print(email)
+            # -------------
 
-
-class Display(IService):
-    def __init__(self, timeout: int, email_queue: Queue):
-        self._timeout: int = timeout
-        self._email_queue: Queue = email_queue
-
-    def _handle(self, url):
-        print("Display got: ", url)
+    except Empty:
+        print("<end email_display>")
 
 
-async def main():
+def main():
     # Timeout is the max time allowed for any service to await new messages before exiting
     timeout: int = 5  # seconds
 
@@ -153,28 +103,28 @@ async def main():
     email_queue = Queue()
 
     # Adds crawler seeds
-    await hyperlink_queue.put('http://localhost:3000')
-    await hyperlink_queue.put(
-        'https://www.michaelcho.me/article/primer-to-python-multiprocessing-multithreading-and-asyncio')
+    hyperlink_queue.put('http://localhost:3000')
+    hyperlink_queue.put('https://www.michaelcho.me/article/primer-to-python-multiprocessing-multithreading-and-asyncio')
 
     # Create our service processes
     services = [
         # First we filter our URLs to not repeat already processed URLs
-        url_filter(timeout, hyperlink_queue, request_queue),
+        mp.Process(target=url_filter, args=(timeout, hyperlink_queue, request_queue)),
 
         # New URLs are passed to the network IO service which returns the website data content
-        network_reader(timeout, request_queue, parse_queue),
+        mp.Process(target=network_reader, args=(timeout, request_queue, parse_queue)),
 
         # Then we find emails on the website content and extract new hyperlinks, repeating the loop
-        web_parser(timeout, parse_queue, email_queue, hyperlink_queue),
+        mp.Process(target=web_parser, args=(timeout, parse_queue, email_queue, hyperlink_queue)),
 
         # And finally display the found emails to the user upon finding
-        # Display(timeout, email_queue)
+        mp.Process(target=email_display, args=(timeout, email_queue)),
     ]
 
     # Startup our services and await completion
-    await asyncio.gather(*services)
+    [s.start() for s in services]
+    [s.join() for s in services]
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
