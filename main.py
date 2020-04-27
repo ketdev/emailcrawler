@@ -4,7 +4,7 @@ import re
 
 # Some type definitions used
 URL = str
-Queue = asyncio.LifoQueue
+Queue = asyncio.Queue
 
 
 class IService(object):
@@ -61,11 +61,15 @@ async def network_reader(timeout: int, in_queue: Queue, out_queue: Queue):
 
             # -------------
             async def _handle_item(session, url, out_queue):
-                async with session.get(url) as resp:
-                    data = await resp.text()
-                    print("<data for: ", url, " >")
-                    await out_queue.put((url, data))
-                pass
+                try:
+                    async with session.get(url) as resp:
+                        data = await resp.text()
+                        print("<data for: ", url, " >")
+                        await out_queue.put((url, data))
+                except aiohttp.client_exceptions.ClientError:
+                    pass
+                except UnicodeDecodeError:
+                    pass
 
             # sending get request and saving the response as response object
             asyncio.ensure_future(_handle_item(session, url, out_queue))
@@ -78,9 +82,9 @@ async def web_parser(timeout: int, in_queue: Queue, email_queue: Queue, hyperlin
         print("<web_parser got: ", url, " >")
 
         # -------------
-        for link in re.findall('"(https?://.*?)"', data):
+        for link in re.findall('href="(https?://.*?)"', data):
             print("<url: ", url, " link: ", link, " >")
-            # await hyperlink_queue.put(link)
+            await hyperlink_queue.put(link)
 
         for email in re.findall(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)", data):
             print("<email: ", email.strip())
