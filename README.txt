@@ -5,7 +5,7 @@ Web Crawler for Email Address Extraction
 
 Written for Python 3.8
 Dependencies:
-    pip install asyncio aiohttp
+    pip install asyncio requests
     pip install pytest [for testing only]
 
 To run:

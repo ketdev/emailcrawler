@@ -5,24 +5,15 @@ from asyncio import Queue
 from services import FilterService, NetworkReaderService, WebParserService, EmailDisplayService
 from common.task_counter import TaskCounter
 from common.website import Website
+import time
 
 # Set logging level
 logging.basicConfig(level=logging.INFO)
 
 
-async def wait_for_complete(services, task_counter):
-    # wait for completion
-    while not task_counter.all_done():
-        await asyncio.sleep(1)
-    logging.info('All tasks completed')
-
-    # Close all services
-    [await s.stop() for s in services]
-    logging.info('All services stopped')
-
-
 async def crawler(seeds, depth):
     logging.info('Starting crawler with depth: %s with seeds: %s', depth, seeds)
+    start = time.time()
 
     # Create communication queues between services
     hyperlink_queue = Queue()
@@ -55,12 +46,20 @@ async def crawler(seeds, depth):
         EmailDisplayService(tc, display_queue),
     ]
 
-    # Start our completion watcher
-    asyncio.ensure_future(wait_for_complete(services, tc))
+    # Startup our services
+    [asyncio.ensure_future(s.run()) for s in services]
 
-    # Startup our services and await completion
-    await asyncio.gather(*[s.run() for s in services])
+    # Wait for completion
+    while not tc.all_done():
+        await asyncio.sleep(1)
+    logging.info('All tasks completed')
 
+    # Close all services
+    [await s.stop() for s in services]
+    logging.info('All services stopped')
+
+    end = time.time()
+    logging.info('Total time: %s', end-start)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Web crawler')

@@ -19,7 +19,6 @@ class BaseService(object):
         while True:
             item = await self._in_queue.get()
             if item is BaseService.HALT:
-                self.task_dec()
                 break
             await self.handle(item)
 

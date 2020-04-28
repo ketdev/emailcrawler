@@ -18,6 +18,8 @@ class WebParserService(BaseService):
         self._email_re = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]*[a-zA-Z0-9]+)')
 
     async def handle(self, website):
+        logging.info('Parsing start: %s', website.url)
+
         # Here we add new tasks per found item: hyperlink or email
         for link in self._link_re.findall(website.content):
 
@@ -30,13 +32,15 @@ class WebParserService(BaseService):
 
             # add a new task
             self.task_inc()
-            logging.info('Found hyperlink: %s depth: %d', website.url, next_depth)
+            logging.info('Found hyperlink: %s depth: %d', link, next_depth)
             await self._hyperlink_queue.put(Website(link, next_depth, ''))
 
         for email in self._email_re.findall(website.content):
             # add a new task
             self.task_inc()
             await self._email_queue.put(email.strip())
+
+        logging.info('Parsing done: %s', website.url)
 
         # Our parsing task completed
         self.task_dec()

@@ -18,3 +18,5 @@ class FilterService(BaseService):
             logging.info('New item: %s', item)
             self._seen_filter.add(item)
             await self._out_queue.put(item)
+        else:
+            self.task_dec()  # task finished here

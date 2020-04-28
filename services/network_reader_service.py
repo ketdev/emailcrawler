@@ -1,7 +1,7 @@
 import logging
 from .base_service import BaseService
 from asyncio import Queue, ensure_future
-from aiohttp import ClientSession, ClientError
+import requests
 
 
 class NetworkReaderService(BaseService):
@@ -15,18 +15,9 @@ class NetworkReaderService(BaseService):
 
     async def handle(self, website):
         # create a new task for the network operation to keep running code
-        ensure_future(self._get_request(website))
+        task = ensure_future(self._get_request(website))
 
     async def _get_request(self, website):
-        try:
-            async with ClientSession() as session:
-                async with session.get(website.url) as resp:
-                    logging.info('GET request: %s', website.url)
-                    website.content = await resp.text()
-                    await self._out_queue.put(website)
-        except ClientError:
-            pass
-        except UnicodeDecodeError:
-            pass
-        except OSError:
-            pass
+        logging.info('GET request: %s', website.url)
+        website.content = requests.get(url=website.url).text
+        await self._out_queue.put(website)
