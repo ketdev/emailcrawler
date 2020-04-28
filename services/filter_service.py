@@ -8,8 +8,8 @@ class FilterService(BaseService):
     Filter out already processed items
     """
 
-    def __init__(self, task_counter, in_queue: Queue, out_queue: Queue):
-        super().__init__(task_counter, in_queue)
+    def __init__(self, item_counter, in_queue: Queue, out_queue: Queue):
+        super().__init__(item_counter, in_queue)
         self._out_queue = out_queue
         self._seen_filter = set()  # internal state of seen item set
 

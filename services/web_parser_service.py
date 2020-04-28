@@ -10,8 +10,8 @@ class WebParserService(BaseService):
     Look for hyperlinks and email addresses in a website content data
     """
 
-    def __init__(self, task_counter, in_queue: Queue, email_queue: Queue, hyperlink_queue: Queue):
-        super().__init__(task_counter, in_queue)
+    def __init__(self, item_counter, in_queue: Queue, email_queue: Queue, hyperlink_queue: Queue):
+        super().__init__(item_counter, in_queue)
         self._email_queue = email_queue
         self._hyperlink_queue = hyperlink_queue
         self._link_re = re.compile(r'href=["\'](https?://.*?)["\']')

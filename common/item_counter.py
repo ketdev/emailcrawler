@@ -1,6 +1,6 @@
-class TaskCounter(object):
+class ItemCounter(object):
     """
-    Counts the number of total tasks shared between services
+    Counts the number of total items shared between services
     """
 
     def __init__(self, value: int):

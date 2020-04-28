@@ -7,8 +7,8 @@ class EmailDisplayService(BaseService):
     Displays emails collected to the user
     """
 
-    def __init__(self, task_counter, in_queue: Queue):
-        super().__init__(task_counter, in_queue)
+    def __init__(self, item_counter, in_queue: Queue):
+        super().__init__(item_counter, in_queue)
 
     async def handle(self, email):
         print(email)

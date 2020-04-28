@@ -1,5 +1,5 @@
 from asyncio import Queue, QueueEmpty
-from common.task_counter import TaskCounter
+from common.item_counter import ItemCounter
 
 
 class BaseService(object):
@@ -8,9 +8,9 @@ class BaseService(object):
     """
     HALT = None  # stopping indicator
 
-    def __init__(self, task_counter: TaskCounter, in_queue: Queue):
+    def __init__(self, item_counter: ItemCounter, in_queue: Queue):
         self._in_queue = in_queue
-        self._task_counter = task_counter
+        self._item_counter = item_counter
 
     async def run(self):
         """
@@ -44,10 +44,10 @@ class BaseService(object):
         """
         Called by handler to indicate a new item has been added
         """
-        self._task_counter.increment()
+        self._item_counter.increment()
 
     def task_dec(self):
         """
         Called by handler to indicate an item has finished processing
         """
-        self._task_counter.decrement()
+        self._item_counter.decrement()

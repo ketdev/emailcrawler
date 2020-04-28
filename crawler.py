@@ -3,7 +3,7 @@ import asyncio
 import logging
 from asyncio import Queue
 from services import FilterService, NetworkReaderService, WebParserService, EmailDisplayService
-from common.task_counter import TaskCounter
+from common.item_counter import ItemCounter
 from common.website import Website
 import time
 
@@ -25,32 +25,32 @@ async def crawler(seeds, depth):
     # Adds crawler seeds
     [hyperlink_queue.put_nowait(Website(s, depth, '')) for s in seeds]
 
-    # Count active tasks, before stopping services
-    tc = TaskCounter(len(seeds))  # starting number of tasks
+    # Count active items, before stopping services
+    ic = ItemCounter(len(seeds))  # starting number of items
 
     # Create our service tasks
     services = [
         # First we filter our URLs to not repeat already processed URLs
-        FilterService(tc, hyperlink_queue, request_queue),
+        FilterService(ic, hyperlink_queue, request_queue),
 
         # New URLs are passed to the network IO service which returns the website data content
-        NetworkReaderService(tc, request_queue, parse_queue),
+        NetworkReaderService(ic, request_queue, parse_queue),
 
         # Then we find emails on the website content and extract new hyperlinks, repeating the loop
-        WebParserService(tc, parse_queue, email_queue, hyperlink_queue),
+        WebParserService(ic, parse_queue, email_queue, hyperlink_queue),
 
         # Also filter output emails to remove duplicates
-        FilterService(tc, email_queue, display_queue),
+        FilterService(ic, email_queue, display_queue),
 
         # And finally display the found emails to the user upon finding
-        EmailDisplayService(tc, display_queue),
+        EmailDisplayService(ic, display_queue),
     ]
 
     # Startup our services
     [asyncio.ensure_future(s.run()) for s in services]
 
     # Wait for completion
-    while not tc.all_done():
+    while not ic.all_done():
         await asyncio.sleep(1)
     logging.info('All tasks completed')
 
@@ -59,7 +59,8 @@ async def crawler(seeds, depth):
     logging.info('All services stopped')
 
     end = time.time()
-    logging.info('Total time: %s', end-start)
+    logging.info('Total time: %s', end - start)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Web crawler')

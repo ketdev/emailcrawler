@@ -9,12 +9,11 @@ class NetworkReaderService(BaseService):
     Request website content
     """
 
-    def __init__(self, task_counter, in_queue: Queue, out_queue: Queue):
-        super().__init__(task_counter, in_queue)
+    def __init__(self, item_counter, in_queue: Queue, out_queue: Queue):
+        super().__init__(item_counter, in_queue)
         self._out_queue = out_queue
 
     async def handle(self, website):
-        # create a new task for the network operation to keep running code
         task = ensure_future(self._get_request(website))
 
     async def _get_request(self, website):
