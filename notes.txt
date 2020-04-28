@@ -54,7 +54,7 @@ Algorithm flow design:
 -------------------------------------------------------------------------------
 Classes & Data structures:
 
-    Multiprocess Queues:    <from multiprocessing import Process, Queue>
+    Queues:
         HyperlinkQueue: new websites hyperlinks discovered
         RequestQueue: websites that haven't yet been processed
         ParseQueue: website content to be parsed
