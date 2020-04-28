@@ -33,13 +33,13 @@ def crawler(seeds, depth):
         FilterService(ic, hyperlink_queue, request_queue),
 
         # New URLs are passed to the network IO service which returns the website data content
+        # Note: create 4 processes for higher network performance, can be optimized per running system
         NetworkReaderService(ic, request_queue, parse_queue),
         NetworkReaderService(ic, request_queue, parse_queue),
         NetworkReaderService(ic, request_queue, parse_queue),
         NetworkReaderService(ic, request_queue, parse_queue),
 
         # Then we find emails on the website content and extract new hyperlinks, repeating the loop
-        WebParserService(ic, parse_queue, email_queue, hyperlink_queue),
         WebParserService(ic, parse_queue, email_queue, hyperlink_queue),
 
         # Also filter output emails to remove duplicates
