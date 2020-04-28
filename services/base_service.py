@@ -1,4 +1,5 @@
-from asyncio import Queue, QueueEmpty
+from multiprocessing import Queue
+from queue import Empty
 from common.item_counter import ItemCounter
 
 
@@ -12,29 +13,29 @@ class BaseService(object):
         self._in_queue = in_queue
         self._item_counter = item_counter
 
-    async def run(self):
+    def run(self):
         """
         Wait for items in input queue and calls handle method
         """
         while True:
-            item = await self._in_queue.get()
+            item = self._in_queue.get()
             if item is BaseService.HALT:
                 break
-            await self.handle(item)
+            self.handle(item)
 
-    async def stop(self):
+    def stop(self):
         """
         Clears input queue and stops all execution after current item
         """
         try:
             while True:
                 self._in_queue.get_nowait()
-        except QueueEmpty:
+        except Empty:
             pass
         finally:
-            await self._in_queue.put(BaseService.HALT)
+            self._in_queue.put(BaseService.HALT)
 
-    async def handle(self, item):
+    def handle(self, item):
         """
         Should be implemented per service
         """

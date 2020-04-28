@@ -1,17 +1,16 @@
 import argparse
-import asyncio
 import logging
-from asyncio import Queue
+import time
+from multiprocessing import Queue, Process
 from services import FilterService, NetworkReaderService, WebParserService, EmailDisplayService
 from common.item_counter import ItemCounter
 from common.website import Website
-import time
 
 # Set logging level
 logging.basicConfig(level=logging.INFO)
 
 
-async def crawler(seeds, depth):
+def crawler(seeds, depth):
     logging.info('Starting crawler with depth: %s with seeds: %s', depth, seeds)
     start = time.time()
 
@@ -35,8 +34,12 @@ async def crawler(seeds, depth):
 
         # New URLs are passed to the network IO service which returns the website data content
         NetworkReaderService(ic, request_queue, parse_queue),
+        NetworkReaderService(ic, request_queue, parse_queue),
+        NetworkReaderService(ic, request_queue, parse_queue),
+        NetworkReaderService(ic, request_queue, parse_queue),
 
         # Then we find emails on the website content and extract new hyperlinks, repeating the loop
+        WebParserService(ic, parse_queue, email_queue, hyperlink_queue),
         WebParserService(ic, parse_queue, email_queue, hyperlink_queue),
 
         # Also filter output emails to remove duplicates
@@ -47,15 +50,17 @@ async def crawler(seeds, depth):
     ]
 
     # Startup our services
-    [asyncio.ensure_future(s.run()) for s in services]
+    processes = [Process(target=s.run) for s in services]
+    [p.start() for p in processes]
 
     # Wait for completion
     while not ic.all_done():
-        await asyncio.sleep(1)
+        time.sleep(1)
     logging.info('All tasks completed')
 
     # Close all services
-    [await s.stop() for s in services]
+    [s.stop() for s in services]
+    [p.join() for p in processes]
     logging.info('All services stopped')
 
     end = time.time()
@@ -69,4 +74,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Run the crawler with initial seeds
-    asyncio.run(crawler(args.url, args.depth))
+    crawler(args.url, args.depth)

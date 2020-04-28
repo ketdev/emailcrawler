@@ -1,4 +1,4 @@
-class Website:
+class Website(object):
     def __init__(self, url: str, depth: int, content: str):
         self.url = url
         self.depth = depth

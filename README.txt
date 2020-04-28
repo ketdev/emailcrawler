@@ -13,10 +13,10 @@ Dependencies:
 To run:
 ------------
     python crawler.py [--depth X] URL [URLs...]
-    Where URL are the initial crawler seeds to search
+        Where URL are the initial crawler seeds to search
+        Depth is an optional limit to the number of hyperlinks followed
 
 Notes:
 ------------
     The crawler avoids loops and will exit when there are no more links remaining,
-    but can keep going for a long time, depending on the provided seeds.
-    To limit the depth an optional argument 'depth' can be passed to the command line.
+    but can keep going for a long time, depending on the provided seeds, or infinite depth.

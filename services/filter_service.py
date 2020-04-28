@@ -1,6 +1,6 @@
 import logging
 from .base_service import BaseService
-from asyncio import Queue
+from multiprocessing import Queue
 
 
 class FilterService(BaseService):
@@ -13,10 +13,10 @@ class FilterService(BaseService):
         self._out_queue = out_queue
         self._seen_filter = set()  # internal state of seen item set
 
-    async def handle(self, item):
+    def handle(self, item):
         if item not in self._seen_filter:
             logging.info('New item: %s', item)
             self._seen_filter.add(item)
-            await self._out_queue.put(item)
+            self._out_queue.put(item)
         else:
             self.task_dec()  # task finished here
