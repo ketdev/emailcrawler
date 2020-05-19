@@ -5,7 +5,7 @@ class Website(object):
         self.content = content
 
     def __eq__(self, other):
-        return self.url.__eq__(other)
+        return self.url.__eq__(other.url)
 
     def __hash__(self):
         return self.url.__hash__()
