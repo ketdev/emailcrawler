@@ -1,8 +1,5 @@
 
 Web Crawler for Email Address Extraction
-       ~ Accenture Home Task ~
-           - David Keter -
-
 Written for Python 3.8
 
 Dependencies:
